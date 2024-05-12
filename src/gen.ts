@@ -38,43 +38,89 @@ const isOrientationVertical = (w: number, h: number) => {
     return Math.floor(Math.random() * 2) === 0
 }
 
-export const recursiveDiv = (setGrid: React.Dispatch<React.SetStateAction<Grid>>) => {
+export const recursiveDiv = (setGrid: React.Dispatch<React.SetStateAction<Grid>>, size: number) => {
     setGrid(grid => {
         const doors = Array.from({ length: grid.length }, () => Array(grid[0].length).fill(false))
 
         const divide = (i1: number, j1: number, i2: number, j2: number) => {
-            if (i2 - i1 < 2 || j2 - j1 < 2) return
+            if (i2 - i1 < 2 * size || j2 - j1 < 2 * size) return
+            let j = j1 + Math.floor(Math.random() * ((j2 - j1 - size) / 2)) + size
 
-            let j = j1 + Math.floor(Math.random() * (j2 - j1 - 1)) + 1
-            let i = i1 + Math.floor(Math.random() * (i2 - i1 - 1)) + 1
+            let i = i1 + Math.floor(Math.random() * ((i2 - i1 - size) / 2)) + size
+
             const isVertical = isOrientationVertical(i2 - i1, j2 - j1)
-
             if (isVertical) {
                 for (let k = i1; k <= i2; ++k) {
-                    if (k === i) continue
-                    if (k > 0 && doors[k - 1][j]) continue
-                    if (k < grid.length - 1 && doors[k + 1][j]) continue
+
+                    let isDoorNear = false
+                    for (let d = 1; d <= size; ++d) {
+                        if (k - d >= 0 && doors[k - d][j]) {
+                            isDoorNear = true
+                            break
+                        }
+                    }
+
+                    if (isDoorNear) continue
+
+                    for (let d = 1; d <= size; ++d) {
+                        if (k + d < grid.length && doors[k + d][j]) {
+                            isDoorNear = true
+                            break
+                        }
+                    }
+
+                    if (isDoorNear) continue
+                    
                     grid[k][j] = CellValue.WATER
                 }
-                doors[i][j] = true
+
+                for (let d = i; d < i + size; ++d) {
+                    if (d < grid.length) {
+                        doors[d][j] = true
+                        grid[d][j] = CellValue.GRASS
+                    }
+                }
+
                 divide(i1, j1, i2, j - 1)
                 divide(i1, j + 1, i2, j2)
             } else {
                 for (let k = j1; k <= j2; ++k) {
-                    if (k === j) continue
-                    if (k > 0 && doors[i][k - 1]) continue
-                    if (k < grid[i].length - 1 && doors[i][k + 1]) continue
+
+                    let isDoorNear = false
+                    for (let d = 1; d <= size; ++d) {
+                        if (k - d >= 0 && doors[i][k - d]) {
+                            isDoorNear = true
+                            break
+                        }
+                    }
+
+                    if (isDoorNear) continue
+
+                    for (let d = 1; d <= size; ++d) {
+                        if (k + d < grid[i].length && doors[i][k + d]) {
+                            isDoorNear = true
+                            break
+                        }
+                    }
+
+                    if (isDoorNear) continue
+
                     grid[i][k] = CellValue.WATER
                 }
-                doors[i][j] = true
+
+                for (let d = j; d < j + size; ++d) {
+                    if (d < grid[0].length) {
+                        doors[i][d] = true
+                        grid[i][d] = CellValue.GRASS
+                    }
+                }
+
                 divide(i1, j1, i - 1, j2)
                 divide(i + 1, j1, i2, j2)
             }
 
         }
-
         divide(0, 0, grid.length - 1, grid[0].length - 1)
-
         return [...grid]
     })
 }
@@ -86,12 +132,12 @@ export const flat = (setGrid: React.Dispatch<React.SetStateAction<Grid>>) => {
     })
 }
 
-const genToFunc: Record<Gen, (setGrid: React.Dispatch<React.SetStateAction<Grid>>) => void> = {
+const genToFunc: Record<Gen, (setGrid: React.Dispatch<React.SetStateAction<Grid>>, size: number) => void> = {
     [Gen.FLAT]: flat,
     [Gen.RIVERS]: fillRiver,
     [Gen.RECURSIVEDIV]: recursiveDiv
 };
 
-export const generate = (gen: Gen, setGrid: React.Dispatch<React.SetStateAction<Grid>>) => {
-    genToFunc[gen](setGrid)
+export const generate = (gen: Gen, setGrid: React.Dispatch<React.SetStateAction<Grid>>, size: number) => {
+    genToFunc[gen](setGrid, size)
 }

@@ -4,17 +4,13 @@ import { CellValue, Gen, Grid } from './types';
 import { astar, bfs, dfs, djikstra } from './algos';
 import { generate } from './gen';
 
-const W = 100
-const H = 60
+const W = 80
+const H = 50
 
 export const N_BRIDGES = 3
 export const N_RIVERS = 4
 
 export const R_WIDTH = 2
-
-export const ANIM_SPEED = 0
-
-export const SIZE = 3
 
 const CellValues = Object.keys(CellValue).slice(Object.keys(CellValue).length / 2)
 const GenValues = Object.keys(Gen).slice(Object.keys(Gen).length / 2)
@@ -33,6 +29,7 @@ const currentNodeSupplier = (): [number, number] => [-1, -1]
 
 const App = () => {
   const [grid, setGrid] = useState<Grid>(gridSupplier())
+  const [size, setSize] = useState<number>(1)
   const [weightSupplier, setWeightSupplier] = useState<() => number[][]>(() => unweightedSupplier)
   const [weights, setWeights] = useState<number[][]>(weightSupplier())
   const [visited, setVisited] = useState<number[][]>(visitedSupplier())
@@ -45,6 +42,7 @@ const App = () => {
   const [gen, setGen] = useState<Gen>(Gen.FLAT)
   const [algorithm, setAlgorithm] = useState<(shouldAnimate: boolean) => void>()
   const [shouldAnimate, setShouldAnimate] = useState<boolean>(true)
+  const [animSpeed, setAnimSpeed] = useState<number>(0)
 
   const clear = () => {
     setVisited(visitedSupplier())
@@ -75,6 +73,10 @@ const App = () => {
   }
 
   useEffect(() => {
+
+  }, [size])
+
+  useEffect(() => {
     if (algorithm) {
       algorithm(shouldAnimate)
       setShouldAnimate(false)
@@ -89,7 +91,7 @@ const App = () => {
       setVisited(visitedSupplier())
       setPath(pathSupplier())
       setCurrentNode(currentNodeSupplier())
-      generate(gen, setGrid)
+      generate(gen, setGrid, size)
 
       const startDrawing = (e: MouseEvent) => {
         setDrawing(true)
@@ -110,8 +112,8 @@ const App = () => {
   const fillCellAndReplaceExisting = (cellToFill: CellValue, i: number, j: number) => {
     if (grid[i][j] === CellValue.WATER) return
     
-    for (let di = 0; di < SIZE; ++di) {
-      for (let dj = 0; dj < SIZE; ++dj) {
+    for (let di = 0; di < size; ++di) {
+      for (let dj = 0; dj < size; ++dj) {
         if (i - di < 0 || j + dj < 0 || i - di >= grid.length || j + dj >= grid[0].length) return
       }
     }
@@ -122,8 +124,8 @@ const App = () => {
       }
     }))
 
-    for (let di = 0; di < SIZE; ++di) {
-      for (let dj = 0; dj < SIZE; ++dj) {
+    for (let di = 0; di < size; ++di) {
+      for (let dj = 0; dj < size; ++dj) {
         grid[i - di][j + dj] = cellToFill
       }
     }
@@ -192,7 +194,7 @@ const App = () => {
         <div className='flex flex-col space-y-1 text-white'>
           {CellValues.map((color, i) =>
             <button
-              key={i} className={`w-40 h-40 hover:scale-105 rounded-md ${valToColor[i]}`}
+              key={i} className={`w-24 h-24 hover:scale-105 rounded-md ${valToColor[i]}`}
               onContextMenu={(e) => {
                 e.preventDefault()
 
@@ -215,7 +217,9 @@ const App = () => {
                 setCurrentNode,
                 setVisited,
                 setPath,
-                shouldAnimate
+                size,
+                shouldAnimate,
+                animSpeed
               )
             })}
           >DFS</button>
@@ -228,7 +232,9 @@ const App = () => {
                 setCurrentNode,
                 setVisited,
                 setPath,
-                shouldAnimate
+                size,
+                shouldAnimate,
+                animSpeed
               )
             })}
           >BFS</button>
@@ -242,7 +248,9 @@ const App = () => {
                 setVisited,
                 setPath,
                 weights,
-                shouldAnimate
+                size,
+                shouldAnimate,
+                animSpeed
               )
             })}
           >Dijkstra</button>
@@ -256,7 +264,9 @@ const App = () => {
                 setVisited,
                 setPath,
                 weights,
-                shouldAnimate
+                size,
+                shouldAnimate,
+                animSpeed
               )
             })}
           >A*</button>
@@ -271,7 +281,7 @@ const App = () => {
               setGrid(gridSupplier())
               setWeights(weightSupplier())
               setAlgorithm(undefined)
-              generate(gen, setGrid)
+              generate(gen, setGrid, size)
             }}
           >Re-generate</button>
           <select className='bg-black w-40 h-10 rounded-md p-2' onChange={(e) => {
@@ -288,6 +298,22 @@ const App = () => {
               if (e.target.checked) setWeightSupplier(() => weightedSupplier)
               else setWeightSupplier(() => unweightedSupplier)
             }} className='w-10 h-10' /><span>Weighted?</span>
+          </div>
+          <div className='bg-black flex justify-between items-center space-x-2 rounded-mb w-56 h-10 px-2'>
+            <div className='flex space-x-1'>
+            <span>Size</span>
+            <span>{size}</span>
+            </div>
+            <input type="range" min="1" max="10" value={size} onChange={(e) => setSize(parseInt(e.target.value))}></input>
+          </div>
+          <div className='flex flex-col space-y-2 bg-black p-2 rounded-md'>
+          <span>Animation Speed</span>
+          <select className='bg-black' onChange={(e) => setAnimSpeed(parseInt(e.target.value))}>
+            <option value="0">Fast</option>
+            <option value="10">Mid</option>
+            <option value="100">Slow</option>
+            <option value="1000">Snail</option>
+          </select>
           </div>
         </div>
       </header>
