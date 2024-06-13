@@ -12,4 +12,4 @@ export enum Gen {
     RECURSIVEDIV
 }
 
-export type Grid = CellValue[][]
+export type TGrid = CellValue[][]

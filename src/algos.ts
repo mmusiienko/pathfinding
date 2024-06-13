@@ -1,9 +1,9 @@
 import Heap from "heap-js"
-import { CellValue, Grid } from "./types"
+import { CellValue, TGrid } from "./types"
 
 const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay))
 
-const getLine = (i: number, j: number, length: number, grid: Grid, isVertical: boolean): [number, number][] => {
+const getLine = (i: number, j: number, length: number, grid: TGrid, isVertical: boolean): [number, number][] => {
 
     const res: [number, number][] = []
     for (let k = 0; k < length; ++k) {
@@ -17,13 +17,31 @@ const getLine = (i: number, j: number, length: number, grid: Grid, isVertical: b
 }
 
 const getNeighbors = (i: number, j: number, nRows: number, nCols: number): [number, number][] => {
-    return ([[i + 1, j], [i, j - 1], [i - 1, j], [i, j + 1]] as [number, number][]).filter(idx => idx[0] >= 0 && idx[0] < nRows && idx[1] >= 0 && idx[1] < nCols)
+    return ([[i, j + 1], [i - 1, j], [i + 1, j], [i, j - 1]] as [number, number][]).filter(idx => idx[0] >= 0 && idx[0] < nRows && idx[1] >= 0 && idx[1] < nCols)
 }
 
 const getLineWeight = (line: [number, number][], weights: number[][]) => line.reduce((acc, [i, j]) => weights[i][j] + acc, 0)
 
-const getFrontier = (i: number, j: number, grid: Grid, size: number, weights?: number[][]): [number, number, number][] => {
+const getFrontier = (i: number, j: number, grid: TGrid, size: number, weights?: number[][]): [number, number, number][] => {
     const frontier: [number, number, number][] = []
+
+    if (j + size < grid[i].length) {
+        const rightLine = getLine(i, j + size, size, grid, true)
+        if (rightLine.length !== 0) {
+            let rightW = 0
+            if (weights) rightW = getLineWeight(rightLine, weights)
+            frontier.push([rightW, i, j + 1])
+        }
+    }
+
+    if (i - size >= 0) {
+        const topLine = getLine(i - size, j, size, grid, false)
+        if (topLine.length !== 0) {
+            let topW = 0
+            if (weights) topW = getLineWeight(topLine, weights)
+            frontier.push([topW, i - 1, j])
+        }
+    }
 
     if (i + 1 < grid.length) {
         const bottomLine = getLine(i + 1, j, size, grid, false)
@@ -43,24 +61,6 @@ const getFrontier = (i: number, j: number, grid: Grid, size: number, weights?: n
             frontier.push([leftW, i, j - 1])
         }
     }
-
-    if (i - size >= 0) {
-        const topLine = getLine(i - size, j, size, grid, false)
-        if (topLine.length !== 0) {
-            let topW = 0
-            if (weights) topW = getLineWeight(topLine, weights)
-            frontier.push([topW, i - 1, j])
-        }
-    }
-
-    if (j + size < grid[i].length) {
-        const rightLine = getLine(i, j + size, size, grid, true)
-        if (rightLine.length !== 0) {
-            let rightW = 0
-            if (weights) rightW = getLineWeight(rightLine, weights)
-            frontier.push([rightW, i, j + 1])
-        }
-    }
     return frontier
 }
 
@@ -71,13 +71,16 @@ const fallBack = async (
     i: number,
     j: number,
     visited: number[][],
-    grid: Grid,
+    grid: TGrid,
     path: boolean[][],
     setPath: (path: boolean[][]) => void,
     shouldAnimate: boolean,
     animSpeed: number,
+    shouldStop: () => boolean
 ) => {
     const helper = async (i: number, j: number) => {
+        if (shouldStop()) return
+
         const next = getNeighbors(i, j, grid.length, grid[i].length).filter(([ni, nj]) => visited[ni][nj] >= 0 && visited[ni][nj] < visited[i][j])
         const values = next.map(idx => visited[idx[0]][idx[1]])
         let max = Number.NEGATIVE_INFINITY
@@ -104,14 +107,16 @@ const fallBackWeighted = async (
     i: number,
     j: number,
     visited: number[][],
-    grid: Grid,
+    grid: TGrid,
     path: boolean[][],
     setPath: (path: boolean[][]) => void,
     weight: number[][],
     shouldAnimate: boolean,
     animSpeed: number,
+    shouldStop: () => boolean
 ) => {
     const helper = async (i: number, j: number) => {
+        if (shouldStop()) return
         const next = getNeighbors(i, j, grid.length, grid[i].length).filter(([ni, nj]) => visited[ni][nj] >= 0 && visited[ni][nj] < visited[i][j])
         const values = next.map(idx => weight[idx[0]][idx[1]])
         let min = Number.POSITIVE_INFINITY
@@ -134,7 +139,7 @@ const fallBackWeighted = async (
     if (!shouldAnimate) setPath([...path])
 }
 
-const findNode = (type: CellValue, grid: Grid): [number, number] => {
+const findNode = (type: CellValue, grid: TGrid): [number, number] => {
     for (let i = 0; i < grid.length; ++i) {
         for (let j = 0; j < grid[i].length; ++j) {
             if (grid[i][j] === type) {
@@ -153,13 +158,14 @@ const findNode = (type: CellValue, grid: Grid): [number, number] => {
 }
 
 export const dfs = async (
-    grid: Grid,
+    grid: TGrid,
     setCurrentNode: (node: [number, number]) => void,
     setVisited: (visited: number[][]) => void,
     setPath: (path: boolean[][]) => void,
     size: number,
     shouldAnimate: boolean,
     animSpeed: number,
+    shouldStop: () => boolean
 ) => {
     let order = 0
     const [i, j] = findNode(CellValue.SOURCE, grid)
@@ -167,6 +173,7 @@ export const dfs = async (
     const path = pathSupplier(grid.length, grid[0].length)
 
     const found = async (i: number, j: number) => {
+        if (shouldStop()) return false
         if (i < 0 || i >= grid.length || j < 0 || j >= grid[i].length) return false
         if (grid[i][j] === CellValue.WATER) return false
         if (visited[i][j] !== -1) return false
@@ -179,7 +186,7 @@ export const dfs = async (
             setCurrentNode([i, j])
             setVisited([...visited])
             setPath([...path])
-            await fallBack(i, j, visited, grid, path, setPath, shouldAnimate, animSpeed)
+            await fallBack(i, j, visited, grid, path, setPath, shouldAnimate, animSpeed, shouldStop)
             return true
         }
 
@@ -202,24 +209,29 @@ export const dfs = async (
 }
 
 export const bfs = async (
-    grid: Grid,
+    grid: TGrid,
     setCurrentNode: (node: [number, number]) => void,
     setVisited: (visited: number[][]) => void,
     setPath: (path: boolean[][]) => void,
     size: number,
     shouldAnimate: boolean,
     animSpeed: number,
+    shouldStop: () => boolean
 ) => {
     const visited = visitedSupplier(grid.length, grid[0].length)
     const path = pathSupplier(grid.length, grid[0].length)
 
     const found = async () => {
+
+
         let order = 0
         const q: [number, number][] = []
         const [i, j] = findNode(CellValue.SOURCE, grid)
         if (i === -1) return false
         q.push([i, j])
         while (q.length !== 0) {
+            if (shouldStop()) return false
+
             const [i, j] = q.shift()!
             if (grid[i][j] === CellValue.WATER) continue
             if (visited[i][j] !== -1) continue
@@ -233,7 +245,7 @@ export const bfs = async (
                 setPath([...path])
                 setCurrentNode([i, j])
                 setVisited([...visited])
-                await fallBack(i, j, visited, grid, path, setPath, shouldAnimate, animSpeed)
+                await fallBack(i, j, visited, grid, path, setPath, shouldAnimate, animSpeed, shouldStop)
                 return true
             }
 
@@ -259,7 +271,7 @@ export const bfs = async (
 const manhattan = (i1: number, j1: number, i2: number, j2: number) => Math.abs(i1 - i2) + Math.abs(j1 - j2)
 
 export const astar = async (
-    grid: Grid,
+    grid: TGrid,
     setCurrentNode: (node: [number, number]) => void,
     setVisited: React.Dispatch<React.SetStateAction<number[][]>>,
     setPath: React.Dispatch<React.SetStateAction<boolean[][]>>,
@@ -267,13 +279,15 @@ export const astar = async (
     size: number,
     shouldAnimate: boolean,
     animSpeed: number,
-    heuristic: (i1: number, j1: number, i2: number, j2: number) => number = manhattan,
+    shouldStop: () => boolean,
+    heuristic: (i1: number, j1: number, i2: number, j2: number) => number = manhattan
 ) => {
     const visited = visitedSupplier(grid.length, grid[0].length)
     const path = pathSupplier(grid.length, grid[0].length)
 
     const found = async () => {
-        const heap = new Heap<[number, number, number]>((e1, e2) => e1[0] + (size + 1) * heuristic(e1[1], e1[2], ti, tj) - e2[0] - (size + 1) * heuristic(e2[1], e2[2], ti, tj)) // in heap [weight, i, j], when comparing weight + heuristic is used
+
+        const heap = new Heap<[number, number, number]>((e1, e2) => e1[0] + (size) * heuristic(e1[1], e1[2], ti, tj) - e2[0] - (size) * heuristic(e2[1], e2[2], ti, tj)) // in heap [weight, i, j], when comparing weight + heuristic is used
         const [si, sj] = findNode(CellValue.SOURCE, grid)
         const [ti, tj] = findNode(CellValue.TARGET, grid)
         if (si === -1) return false
@@ -283,6 +297,8 @@ export const astar = async (
         heap.push([weights[si][sj], si, sj])
 
         while (heap.length !== 0) {
+            if (shouldStop()) return false
+
             const [weight, i, j] = heap.pop()!
 
             if (grid[i][j] === CellValue.WATER) continue
@@ -296,7 +312,7 @@ export const astar = async (
                 setVisited([...visited])
                 setCurrentNode([i, j])
                 setPath([...path])
-                await fallBackWeighted(i, j, visited, grid, path, setPath, weights, shouldAnimate, animSpeed)
+                await fallBackWeighted(i, j, visited, grid, path, setPath, weights, shouldAnimate, animSpeed, shouldStop)
                 return true
             }
 
@@ -320,7 +336,7 @@ export const astar = async (
 }
 
 export const djikstra = async (
-    grid: Grid,
+    grid: TGrid,
     setCurrentNode: (node: [number, number]) => void,
     setVisited: React.Dispatch<React.SetStateAction<number[][]>>,
     setPath: React.Dispatch<React.SetStateAction<boolean[][]>>,
@@ -328,6 +344,7 @@ export const djikstra = async (
     size: number,
     shouldAnimate: boolean,
     animSpeed: number,
+    shouldStop: () => boolean
 ) => {
     await astar(
         grid,
@@ -338,6 +355,7 @@ export const djikstra = async (
         size,
         shouldAnimate,
         animSpeed,
-        () => 0,
+        shouldStop,
+        () => 0
     )
 }

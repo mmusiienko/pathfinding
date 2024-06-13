@@ -1,9 +1,9 @@
 import { N_BRIDGES, N_RIVERS, R_WIDTH } from "./App"
-import { CellValue, Gen, Grid } from "./types"
+import { CellValue, Gen, TGrid } from "./types"
 
 const clamp = (num: number, min: number, max: number): number => Math.min(Math.max(num, min), max)
 
-export const fillRiver = (setGrid: React.Dispatch<React.SetStateAction<Grid>>) => {
+export const fillRiver = (setGrid: React.Dispatch<React.SetStateAction<TGrid>>) => {
     setGrid(grid => {
         for (let k = 0; k < N_RIVERS; ++k) {
             const isVertical = (Math.floor(Math.random() * 2) === 0)
@@ -38,7 +38,7 @@ const isOrientationVertical = (w: number, h: number) => {
     return Math.floor(Math.random() * 2) === 0
 }
 
-export const recursiveDiv = (setGrid: React.Dispatch<React.SetStateAction<Grid>>, size: number) => {
+export const recursiveDiv = (setGrid: React.Dispatch<React.SetStateAction<TGrid>>, size: number) => {
     setGrid(grid => {
         const doors = Array.from({ length: grid.length }, () => Array(grid[0].length).fill(false))
 
@@ -70,7 +70,7 @@ export const recursiveDiv = (setGrid: React.Dispatch<React.SetStateAction<Grid>>
                     }
 
                     if (isDoorNear) continue
-                    
+
                     grid[k][j] = CellValue.WATER
                 }
 
@@ -118,26 +118,25 @@ export const recursiveDiv = (setGrid: React.Dispatch<React.SetStateAction<Grid>>
                 divide(i1, j1, i - 1, j2)
                 divide(i + 1, j1, i2, j2)
             }
-
         }
         divide(0, 0, grid.length - 1, grid[0].length - 1)
         return [...grid]
     })
 }
 
-export const flat = (setGrid: React.Dispatch<React.SetStateAction<Grid>>) => {
+export const flat = (setGrid: React.Dispatch<React.SetStateAction<TGrid>>) => {
     setGrid(grid => {
         grid.forEach((row, i) => row.forEach((cell, j) => grid[i][j] = CellValue.GRASS))
         return [...grid]
     })
 }
 
-const genToFunc: Record<Gen, (setGrid: React.Dispatch<React.SetStateAction<Grid>>, size: number) => void> = {
+const genToFunc: Record<Gen, (setGrid: React.Dispatch<React.SetStateAction<TGrid>>, size: number) => void> = {
     [Gen.FLAT]: flat,
     [Gen.RIVERS]: fillRiver,
     [Gen.RECURSIVEDIV]: recursiveDiv
 };
 
-export const generate = (gen: Gen, setGrid: React.Dispatch<React.SetStateAction<Grid>>, size: number) => {
+export const generate = (gen: Gen, setGrid: React.Dispatch<React.SetStateAction<TGrid>>, size: number) => {
     genToFunc[gen](setGrid, size)
 }
