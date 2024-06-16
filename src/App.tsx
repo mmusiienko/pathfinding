@@ -33,21 +33,24 @@ const shouldStop = () => stopFlag
 
 const App = () => {
   const [grid, setGrid] = useState<TGrid>(gridSupplier())
-  const [size, setSize] = useState<number>(1)
+  const [gen, setGen] = useState<Gen>(Gen.RIVERS)
   const [weightSupplier, setWeightSupplier] = useState<() => number[][]>(() => weightedSupplier)
-  const [weights, setWeights] = useState<number[][]>(weightSupplier())
   const [visited, setVisited] = useState<number[][]>(visitedSupplier())
+  const [weights, setWeights] = useState<number[][]>(weightSupplier())
   const [path, setPath] = useState<boolean[][]>(pathSupplier())
+
+  const [algorithm, setAlgorithm] = useState<(shouldAnimate: boolean) => void>()
+  const [isAlgoRunning, setAlgoRunning] = useState<boolean>(false)
+
   const [currentNode, setCurrentNode] = useState<[number, number]>(currentNodeSupplier())
+
+  const [size, setSize] = useState<number>(1)
+
   const [drawingColor, setDrawingColor] = useState<CellValue>(CellValue.SOURCE)
   const [secDrawingColor, setSecDrawingColor] = useState<CellValue>(CellValue.TARGET)
-  const [isDrawing, setDrawing] = useState<boolean>(false)
-  const [isRmb, setRmb] = useState<boolean>(false)
-  const [gen, setGen] = useState<Gen>(Gen.RIVERS)
-  const [algorithm, setAlgorithm] = useState<(shouldAnimate: boolean) => void>()
+
   const [shouldAnimate, setShouldAnimate] = useState<boolean>(true)
   const [animSpeed, setAnimSpeed] = useState<number>(0)
-  const [isAlgoRunning, setAlgoRunning] = useState<boolean>(false)
 
   const clear = () => {
     setVisited(visitedSupplier())
@@ -68,26 +71,7 @@ const App = () => {
 
   useEffect(() => setWeights(weightSupplier()), [weightSupplier])
 
-  useEffect(
-    () => {
-      clear()
-      generate(gen, setGrid, size)
 
-      const startDrawing = (e: MouseEvent) => {
-        setDrawing(true)
-        setRmb(e.button === 2)
-      }
-      const endDrawing = (e: MouseEvent) => setDrawing(false)
-
-      document.addEventListener("mousedown", startDrawing)
-      document.addEventListener("mouseup", endDrawing)
-
-      return () => {
-        document.removeEventListener("mousedown", startDrawing)
-        document.removeEventListener("mouseup", endDrawing)
-      }
-    }
-    , [gen])
 
   const runAlgo = (algo: (shouldAnimate: boolean) => Promise<void>) => {
     setAlgorithm(
@@ -112,8 +96,8 @@ const App = () => {
           path={path}
           visited={visited}
           weights={weights}
-          isDrawing={isDrawing}
-          isRmb={isRmb}
+          clear={clear}
+          gen={gen}
         />
         <div className='flex flex-col space-y-1 text-white'>
           {CellValues.map((color, i) =>
@@ -149,9 +133,8 @@ const App = () => {
           >DFS</button>
           <button
             className={`w-40 h-10 hover:scale-110 rounded-md bg-black text-white`}
-            onClick={() => setAlgorithm(() => async (shouldAnimate: boolean) => {
-              setShouldAnimate(true)
-              await bfs(
+            onClick={() => runAlgo(
+              async (shouldAnimate: boolean) => await bfs(
                 grid,
                 setCurrentNode,
                 setVisited,
@@ -160,9 +143,7 @@ const App = () => {
                 shouldAnimate,
                 animSpeed,
                 shouldStop
-              )
-              setAlgoRunning(false)
-            })}
+              ))}
           >BFS</button>
           <button
             className={`w-40 h-10 hover:scale-110 rounded-md bg-black text-white`}
@@ -186,7 +167,7 @@ const App = () => {
           >Dijkstra</button>
           <button
             className={`w-40 h-10 hover:scale-110 rounded-md bg-black text-white`}
-            onClick={() => setAlgorithm(() =>
+            onClick={() =>
               runAlgo(async (shouldAnimate: boolean) => {
                 await astar(
                   grid,
@@ -199,8 +180,7 @@ const App = () => {
                   animSpeed,
                   shouldStop
                 )
-              }))
-            }
+              })}
           >A*</button>
           <button
             className={`w-40  h-10 hover:scale-110 rounded-md bg-black text-white`}

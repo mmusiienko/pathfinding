@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react"
 import { valToColor } from "./App"
-import { CellValue, TGrid } from "./types"
+import { CellValue, Gen, TGrid } from "./types"
+import { generate } from "./gen"
 
 interface IGrid {
     grid: TGrid
@@ -11,11 +13,34 @@ interface IGrid {
     path: boolean[][]
     visited: number[][]
     weights: number[][]
-    isDrawing: boolean
-    isRmb: boolean
+    clear: () => void
+    gen: Gen
 }
 
-export const Grid: React.FC<IGrid> = ({ grid, setGrid, targetSize: size, currentNode, path, visited, weights, drawingColor, secDrawingColor, isDrawing, isRmb }) => {
+export const Grid: React.FC<IGrid> = ({ grid, setGrid, targetSize: size, currentNode, path, visited, weights, drawingColor, secDrawingColor, clear, gen }) => {
+    const [isRmb, setRmb] = useState<boolean>(false)
+    const [isDrawing, setDrawing] = useState<boolean>(false)
+
+    useEffect(
+        () => {
+            clear()
+            generate(gen, setGrid, size)
+
+            const startDrawing = (e: MouseEvent) => {
+                setDrawing(true)
+                setRmb(e.button === 2)
+            }
+            const endDrawing = (e: MouseEvent) => setDrawing(false)
+
+            document.addEventListener("mousedown", startDrawing)
+            document.addEventListener("mouseup", endDrawing)
+
+            return () => {
+                document.removeEventListener("mousedown", startDrawing)
+                document.removeEventListener("mouseup", endDrawing)
+            }
+        }
+    , [gen])
 
     const getCellColor = (i: number, j: number) => {
         if (currentNode[0] === i && currentNode[1] === j) {
